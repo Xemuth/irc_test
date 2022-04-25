@@ -1,0 +1,12 @@
+description "\377128,0,0";
+
+library
+	wsock32,
+	Ws2_32;
+
+file
+	IRCClient.h,
+	IRCClient.cpp,
+	Socket.h,
+	Socket.cpp;
+
