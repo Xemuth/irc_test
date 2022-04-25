@@ -62,12 +62,15 @@ std::string IRCClient::PrepareCommand(const std::string& cmd, const std::vector<
 }
 
 std::string IRCClient::ReceiveCommand(int timeout_ms){
-	for(int ratio = 0; ratio < timeout_ms; ratio++){
-		if(fifo.size() > 0){
-			std::unique_lock<std::mutex> lk(lock);
-			std::string str = std::move(fifo.front());
-			fifo.pop();
-			return std::move(str);
+	for(int ratio = 0; ratio < timeout_ms; ratio + 10){
+		{
+			const std::lock_guard<std::mutex> lg(lock);
+			if(fifo.size() > 0){
+				
+				std::string str = std::move(fifo.front());
+				fifo.pop();
+				return std::move(str);
+			}
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(ratio));
 	}
@@ -75,9 +78,8 @@ std::string IRCClient::ReceiveCommand(int timeout_ms){
 }
 
 bool IRCClient::SendCommand(const std::string& cmd){
-	if(client.IsConnected()){
-		std::cout << "Sending command: " << cmd;
-		std::unique_lock<std::mutex> lk(lock);
+	if(client.IsConnected() && client.ReadyToSend(1000)){
+		std::lock_guard<std::mutex> lk(lock);
 		int data_sent = client.SendData(cmd.c_str(), cmd.length());
 		return data_sent;
 	}
@@ -88,17 +90,16 @@ void IRCClient::RxRoutine(){
 	std::cout << "entering thread" << std::endl;
 	static char buffer[512];
 	for(;;){
-		if(client.IsError() || !client.IsConnected())
+		if(!client.IsConnected())
 			break;
 		if(client.HasData(1000)){
-			std::unique_lock<std::mutex> lk(lock);
 			memset(buffer, '\0', 512);
+			std::lock_guard<std::mutex> lk(lock);
 			client.ReceiveData(buffer, 512);
 			std::string received(buffer);
 			std::cout <<  "Received : " << received << std::endl;
 			fifo.push(std::move(received));
 		}
-		std::this_thread::sleep_for(std::chrono::seconds(1));
 	}
 	std::cout << "exiting thread" << std::endl;
 }

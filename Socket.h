@@ -24,15 +24,12 @@ namespace winsock{
 			
 			bool HasData(int timeout = 0); // When true, then their is something to read in the buffer
 			bool ReadyToSend(int timeout = 0); // When True, then socket is ready to send data
-			bool IsError();
 			bool IsConnected();
 			
 		private:
-			int PollSocketState(int timeout);
-			
 			struct hostent * ResolveHost(const char* inet);
 			bool connected = false;
-			WSAPOLLFD poll;
+		
 			SOCKET socket_client;
 			SOCKADDR_IN socket_address;
 	};

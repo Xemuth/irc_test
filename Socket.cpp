@@ -91,7 +91,7 @@ namespace winsock{
 			
 	void SocketClient::Disconnect(){
 		if(connected){
-			if( closesocket(socket_client) == 0){
+			if(closesocket(socket_client) == 0){
 				std::cout << "Disconnect from host" << std::endl;
 			}else{
 				std::cout << "Error occured during closesocket: " << GetLastErrorAsString() << std::endl;
@@ -104,55 +104,41 @@ namespace winsock{
 	}
 						
 	bool SocketClient::HasData(int timeout){
-		std::cout << "Checking for data" << std::endl;
-		int result = PollSocketState(timeout);
 		if(connected){
-			if(result > 0 && poll.revents & POLLRDNORM){
-				return true;
+			WSAPOLLFD fdarray = {0};
+			fdarray.fd = socket_client;
+			fdarray.events = POLLRDNORM;
+			int ret;
+			if (SOCKET_ERROR == (ret = WSAPoll(&fdarray, 1, timeout))){
+				std::cout << "Error occured during HasData: " << GetLastErrorAsString() << std::endl;
+				Disconnect();
+			}
+			if(ret > 0){
+				return fdarray.revents & POLLRDNORM;
 			}
 		}
 		return false;
 	}
 	
 	bool SocketClient::ReadyToSend(int timeout){
-		int result = PollSocketState(timeout);
 		if(connected){
-			if(result > 0 && poll.revents & POLLWRNORM){
-				return true;
+			WSAPOLLFD fdarray = {0};
+			fdarray.fd = socket_client;
+			fdarray.events = POLLWRNORM;
+			int ret;
+			if (SOCKET_ERROR == (ret = WSAPoll(&fdarray, 1, timeout))){
+				std::cout << "Error occured during HasData: " << GetLastErrorAsString() << std::endl;
+				Disconnect();
+			}
+			if(ret > 0){
+				return fdarray.revents & POLLWRNORM;
 			}
 		}
 		return false;
 	}
-	
-	bool SocketClient::IsError(){
-		int result = PollSocketState(0);
-		if( result == -1){
-			return true;
-		}
-		return false;
-	}
-	
+
 	bool SocketClient::IsConnected(){
 		return connected;
-	}
-	
-	int SocketClient::PollSocketState(int timeout){
-		// This is the only function with disconnect() which is capable of closing the connection
-		if(connected){
-			poll.fd = socket_client;
-			poll.events = POLLRDNORM | POLLWRNORM;
-			int result = WSAPoll(&poll, 1, timeout);
-			if(result == SOCKET_ERROR){
-				std::cout << "Error occured during receiveData: " << GetLastErrorAsString() << std::endl;
-				Disconnect();
-				return -1;
-			}else if(poll.revents & (POLLERR | POLLHUP | POLLNVAL)){
-				Disconnect();
-				return -1;
-			}
-			return result;
-		}
-		return 0;
 	}
 	
 	int SocketClient::SendData(const char* buffer, int size){
@@ -166,17 +152,11 @@ namespace winsock{
 	}
 	
 	int SocketClient::ReceiveData(char* buffer, int maxSize, int timeout_ms){
-		//TODO: Add HAS DATA BEFORE TRYING TO READ
-		if(HasData(timeout_ms)){
-			std::cout << "Receiving data" << std::endl;
-			int recv_byte = 0;
-			if((recv_byte = recv(socket_client, buffer, maxSize, 0)) == SOCKET_ERROR){
-				std::cout << "Error occured during receiveData: " << GetLastErrorAsString() << std::endl;
-			}
-			std::cout << "Receiving end" << std::endl;
-			return recv_byte;
+		int recv_byte = 0;
+		if((recv_byte = recv(socket_client, buffer, maxSize, 0)) == SOCKET_ERROR){
+			std::cout << "Error occured during receiveData: " << GetLastErrorAsString() << std::endl;
 		}
-		return 0;
+		return recv_byte;
 	}
 
 }

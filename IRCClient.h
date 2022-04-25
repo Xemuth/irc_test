@@ -18,7 +18,7 @@ namespace irc{
 			std::string USER(const char* username, const char* hostname, const char* servername, const char* realname, bool use_prefix=false);
 			std::string NICK(const char* nickname, bool use_prefix=false);
 			std::string PRIVMSG(const char* target, const char* message, bool use_prefix=false);
-			std::string ReceiveCommand(int timeout_ms = 3000);
+			std::string ReceiveCommand(int timeout_ms = 500);
 			
 		private:
 			std::unique_ptr<std::thread> rx_thread;
